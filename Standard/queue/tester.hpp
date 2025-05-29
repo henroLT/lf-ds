@@ -17,6 +17,7 @@ enum type {
 extern long int ARGS;
 extern int CASES;
 extern int MAX_STR_LEN;
+extern int testTypes;
 
 void popInt         (ll n, int*&            arr);
 void popLong        (ll n, ll*&             arr);

@@ -7,8 +7,6 @@ using namespace std;
 
 extern int CASES;
 extern long int ARGS;
-
-/* CHANGE THIS TO TEST TYPES */
 constexpr type TYPE = type::LONG;
 
 template <type T>

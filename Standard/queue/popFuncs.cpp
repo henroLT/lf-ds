@@ -9,6 +9,7 @@ using namespace std;
 int CASES       = 100;
 long int ARGS   = 10'000UL;
 int MAX_STR_LEN = 10;
+int testTypes   = 4;
 
 static mt19937_64 rng{random_device{}()};
 static uniform_int_distribution<int> distI {
