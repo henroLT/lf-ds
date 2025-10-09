@@ -7,14 +7,20 @@
 template <typename T>
 struct node {
     std::atomic<T> val;
-    std::atomic<node<T>*> next;
+    std::atomic<nodePointer> next;
+};
+
+template <typename T>
+struct nodePointer {
+    std::atomic<node<T>*> nodeP;
+    std::atomic<unsigned> count;
 };
 
 template <typename T>
 node<T>* node_init(const T& value) {
-    atomic<node<T>*> new_node = new node<T>;
+    std::atomic<node<T>> new_node = new node<T>;
     new_node->val.store(value);
-    new_node->next.store(nullptr);
+    new_node->next.store(NULL);
     return new_node;
 }
 
