@@ -1,6 +1,6 @@
 #include <atomic>
 
-template <typename T>
+template <typename obj>
 class lfqueue {
 
     /* ========================== Nested Structs ============================ */
@@ -10,12 +10,12 @@ class lfqueue {
 
     /* Immutable payload */
     struct Node {
-        const T val;
+        const obj val;
         std::atomic<NodePointer*> next;
 
-        Node()                      : val(T{}), next(nullptr) {}
-        Node(T v)                   : val(v), next(nullptr) {}
-        Node(T v, NodePointer* n)   : val(v), next(n) {}
+        Node()                      : val(obj{}), next(nullptr) {}
+        Node(obj v)                   : val(v), next(nullptr) {}
+        Node(obj v, NodePointer* n)   : val(v), next(n) {}
         ~Node()                     = default;
     };
 
@@ -45,13 +45,13 @@ class lfqueue {
     /* ========================== Public Interface ===========================*/
     public:
         lfqueue() {
-            Node* dummy = node_init(T{});
+            Node* dummy = node_init(obj{});
             NodePointer* dummyPtr = new NodePointer(dummy, 0);
             head.ptr.store(dummyPtr);
             tail.ptr.store(dummyPtr);
         }
 
-        void push(const T &elem) {
+        void push(const obj &elem) {
             Node* newNode = new Node(elem);
             NodePointer* newPtr = new NodePointer(newNode);
 
@@ -84,9 +84,9 @@ class lfqueue {
             )){}
         }
 
-        T pop() {
+        obj pop() {
 
-            return T{};
+            return obj{};
         }
 
 
@@ -106,5 +106,5 @@ class lfqueue {
                 current = nextPtr;
             }
         }
-        
+
 };
