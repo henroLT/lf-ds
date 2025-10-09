@@ -1,64 +1,110 @@
-#include <atmoic>
+#include <atomic>
 
 template <typename T>
 class lfqueue {
 
     /* ========================== Nested Structs ============================ */
-    struct nodePointer;
+    struct NodePointer;
+    struct Node;
+    struct PointerWrapper;
 
     /* Immutable payload */
     struct Node {
-        const T                     val;
-        std::atomic<nodePointer*>   next;
+        const T val;
+        std::atomic<NodePointer*> next;
 
         Node()                      : val(T{}), next(nullptr) {}
         Node(T v)                   : val(v), next(nullptr) {}
-        Node(T v, nodePointer* n)   : val(v), next(n) {}
+        Node(T v, NodePointer* n)   : val(v), next(n) {}
         ~Node()                     = default;
     };
 
-    struct nodePointer {
-        std::atomic<Node*>      node;
-        std::atomic<unsigned>   count;
+    struct NodePointer {
+        std::atomic<Node*> node;
+        std::atomic<unsigned> count;
 
-        nodePointer()                       : node(nullptr), count(0) {}
-        nodePointer(Node* n)                : node(n), count(0) {}
-        nodePointer(Node* n, unsigned cnt)  : node(n), count(cnt) {}
-        ~nodePointer()                      = default;
+        NodePointer()                       : node(nullptr), count(0) {}
+        NodePointer(Node* n)                : node(n), count(0) {}
+        NodePointer(Node* n, unsigned cnt)  : node(n), count(cnt) {}
+        ~NodePointer()                      = default;
     };
+
+    /* Prevent false sharing */
+    struct alignas(64) PointerWrapper {
+        std::atomic<NodePointer*> ptr;
+        char padding[64 - sizeof(std::atomic<NodePointer*>)];
+    };
+
+
 
     /* =========================== Private Members ===========================*/
     private:
-        std::atomic<nodePointer> head;
-        std::atomic<nodePointer> tail;
-
-        Node* node_init(const &T val) {
-            Node* temp = new Node;
-            temp -> val = val;
-            temp -> next.store(NULL);
-
-            return temp;
-        }
+        PointerWrapper head;
+        PointerWrapper tail;
 
     /* ========================== Public Interface ===========================*/
     public:
         lfqueue() {
             Node* dummy = node_init(T{});
-            nodePointer* dummyPtr = new nodePointer(dummy, 0);
-            head.store(dummyPtr);
-            tail.store(dummyPtr);
+            NodePointer* dummyPtr = new NodePointer(dummy, 0);
+            head.ptr.store(dummyPtr);
+            tail.ptr.store(dummyPtr);
         }
 
         void push(const T &elem) {
+            Node* newNode = new Node(elem);
+            NodePointer* newPtr = new NodePointer(newNode);
 
+            while (true) {
+                NodePointer* last = tail.ptr.load(std::memory_order_acquire);
+                Node* lastNode = last->node.load(std::memory_order_acquire);
+                NodePointer* next = lastNode->next.load(std::memory_order_acquire);
+
+                if (next == nullptr) {
+                    if (lastNode->next.compare_exchange_weak(
+                        next, newPtr,
+                        std::memory_order_release,
+                        std::memory_order_relaxed
+                    )) break;
+                }
+                else {
+                    tail.ptr.compare_exchange_weak(
+                        last, next,
+                        std::memory_order_release,
+                        std::memory_order_relaxed
+                    );
+                }
+            }
+
+            NodePointer* last = tail.ptr.load(std::memory_order_acquire);
+            while (!tail.ptr.compare_exchange_weak(
+                last, newPtr,
+                std::memory_order_release,
+                std::memory_order_relaxed
+            )){}
         }
 
         T pop() {
 
+            return T{};
         }
+
 
         ~lfqueue() {
+            NodePointer* current = head.ptr.load(std::memory_order_relaxed);
 
+            while (current) {
+                Node* n = current->node.load(std::memory_order_relaxed);
+                NodePointer* nextPtr = nullptr;
+
+                if (n) {
+                    nextPtr = n->next.load(std::memory_order_relaxed);
+                    delete n;
+                }
+
+                delete current;
+                current = nextPtr;
+            }
         }
         
-}
+};
