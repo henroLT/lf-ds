@@ -15,7 +15,7 @@ lfqueue<obj>::lfqueue() {
 
 template <typename obj>
 void lfqueue<obj>::push(const obj &elem) {
-    Node* newNode = new Node(elem);
+    Node* newNode = get_from_pool(elem);
     NodePointer* newPtr = new NodePointer(newNode);
 
     while (true) {
@@ -44,7 +44,7 @@ void lfqueue<obj>::push(const obj &elem) {
     NodePointer* lastPtr = tail.ptr.load(std::memory_order_acquire);
     while (!tail.ptr.compare_exchange_weak(
         lastPtr, newPtr,
-        std::memory_order_release,
+        std::memory_order_acq_rel,
         std::memory_order_relaxed
     )){}
 }
@@ -84,9 +84,7 @@ obj lfqueue<obj>::pop() {
             std::memory_order_acq_rel,
             std::memory_order_relaxed
         )) {
-            delete firstNode;
-            delete first;
-            return value;
+            return_to_pool(firstNode);
         }
     }
 }
@@ -95,6 +93,7 @@ template <typename obj>
 lfqueue<obj>::~lfqueue() {
     NodePointer* current = head.ptr.load(std::memory_order_relaxed);
 
+    /* Delete nodes in queue */
     while (current) {
         Node* n = current->node.load(std::memory_order_relaxed);
         NodePointer* nextPtr = nullptr;
@@ -107,5 +106,33 @@ lfqueue<obj>::~lfqueue() {
         delete current;
         current = nextPtr;
     }
+
+    /* Delete nodes in pool */
 }
 
+
+template <typename obj>
+Node* lfqueue<obj>::get_from_pool(const obj& v) {
+    Node* pooled_node = node_pool.exchange(nullptr);
+
+    if (pooled_node) {
+        pooled_node->val = v;
+        pooled_node->next.store(nullptr, std::memory_order_relaxed);
+        return pooled_node;
+    }
+
+    return new Node(v);
+}
+
+template <typename obj>
+void lfqueue<obj>::return_to_pool(Node* node) {
+    Node* pool_node = node_pool.load(std::memory_order_relaxed);
+
+    do {
+        node->next.store(pool_node, std::memory_order_relaxed);
+    } while (!node_pool.compare_exchange_weak(
+        pool_node, node,
+        std::memory_order_release;
+        std::memory_order_relaxed
+    ));
+}

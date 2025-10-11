@@ -5,3 +5,4 @@ Lock Free Data Structures for concurrency
 
 ### In work ###
 queue
+list

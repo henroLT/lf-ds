@@ -6,8 +6,13 @@
 #include "headers/lfqueue.hpp"
 
 int main(int argc, char** argv) {
-    using T = int;
+    if (argc == 1) {
+        printf("Usage: ./<executable> <numElements> <numThreads>\n");
+        return 0;
+    }
 
+    using T = int;
+    
     int numElements = 100;
     int numThreads  = 4;
     if (argc > 1) numElements = std::atoi(argv[1]);

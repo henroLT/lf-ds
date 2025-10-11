@@ -44,6 +44,10 @@ class lfqueue {
     private:
         PointerWrapper head;
         PointerWrapper tail;
+        std::atomic<Node*> node_pool;
+
+        Node* get_from_pool(const obj& val);
+        void return_to_pool(Node* node);
 
     public:
         lfqueue();
