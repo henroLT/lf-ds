@@ -8,35 +8,23 @@
 template <typename obj>
 class lfqueue {
 
-    struct NodePointer;
-    struct Node;
-    struct PointerWrapper;
 
     struct Node {
         const obj val;
-        std::atomic<NodePointer*> next;
+        std::atomic<Node*> next;
 
-        Node()                              : val(obj{}), next(nullptr) {}
-        Node(const obj& v)                  : val(v), next(nullptr) {}
-        Node(const obj& v, NodePointer* n)  : val(v), next(n) {}
-        ~Node()                             = default;
+        Node()                      : val(obj{}), next(nullptr) {}
+        Node(const obj& v)          : val(v), next(nullptr) {}
+        Node(const obj& v, Node* n) : val(v), next(n) {}
+        ~Node()                     = default;
     };
 
-    struct NodePointer {
-        std::atomic<Node*> node;
-        std::atomic<unsigned> count;
-
-        NodePointer()                       : node(nullptr), count(0) {}
-        NodePointer(Node* n)                : node(n), count(0) {}
-        NodePointer(Node* n, unsigned cnt)  : node(n), count(cnt) {}
-        ~NodePointer()                      = default;
-    };
-
-    struct alignas(64) PointerWrapper {
-        std::atomic<NodePointer*> ptr;
-
-        enum { PAD = (64 > sizeof(std::atomic<NodePointer*>) ? 
-                64 - sizeof(std::atomic<NodePointer*>) : 1) };
+    struct PointerWrapper {
+        std::atomic<Node*> ptr;
+        std::atomic<uint64_t> count;
+        
+        enum { PAD = (64 > sizeof(std::atomic<Node*>) + sizeof(std::atomic<uint64_t>) ? 
+                64 - sizeof(std::atomic<Node*>) - sizeof(std::atomic<uint64_t>) : 1) };
         char padding[PAD];
     };
 
