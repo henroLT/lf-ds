@@ -20,30 +20,35 @@ void lfqueue<obj>::push (const obj &elem) {
 
     while (true) {
         Node* last = tail.ptr.load (std::memory_order_acquire);
+        uint64_t last_count = tail.count.load (std::memory_order_acquire);
         Node* next = last->next.load (std::memory_order_acquire);
 
-        if (last != tail.ptr.load (std::memory_order_acquire)) continue;
+        if (last != tail.ptr.load (std::memory_order_acquire) || 
+            last_count != tail.count.load (std::memory_order_acquire)) 
+                continue;
 
         if (next == nullptr) {
             if (last->next.compare_exchange_weak (next, newNode,
                 std::memory_order_release,
                 std::memory_order_relaxed)) {
 
-                tail.ptr.compare_exchange_strong (last, newNode,
+                if (tail.ptr.compare_exchange_strong (last, newNode,
                     std::memory_order_release,
-                    std::memory_order_relaxed
-                );
-                tail.count.fetch_add (1, std::memory_order_relaxed);
+                    std::memory_order_relaxed)) {
+
+                    tail.count.fetch_add (1, std::memory_order_relaxed);
+                }
 
                 return;
             }
         }
         else {
-            tail.ptr.compare_exchange_weak (last, next,
+            if (tail.ptr.compare_exchange_weak (last, next,
                 std::memory_order_release,
-                std::memory_order_relaxed
-            );
-            tail.count.fetch_add(1, std::memory_order_relaxed);
+                std::memory_order_relaxed)) {
+
+                tail.count.fetch_add (1, std::memory_order_relaxed);
+            }
         }
     }
 }
@@ -52,20 +57,24 @@ template <typename obj>
 obj lfqueue<obj>::pop () {
     while (true) {
         Node* first = head.ptr.load (std::memory_order_acquire);
+        uint64_t first_count = head.count.load (std::memory_order_acquire);
         Node* next = first->next.load (std::memory_order_acquire);
         Node* last = tail.ptr.load (std::memory_order_acquire);
 
-        if (first != head.ptr.load (std::memory_order_relaxed)) 
-            continue;
+        if (first != head.ptr.load (std::memory_order_acquire) || 
+            first_count != head.count.load (std::memory_order_acquire)) 
+                continue;
 
         if (first == last) {
             if (next == nullptr)
                 throw std::runtime_error ("Queue is empty...");
 
-            tail.ptr.compare_exchange_strong (last, next,
+            if (tail.ptr.compare_exchange_strong (last, next,
                 std::memory_order_release,
-                std::memory_order_relaxed
-            );
+                std::memory_order_relaxed)) {
+                
+                tail.count.fetch_add (1, std::memory_order_relaxed);
+            }
         }
 
         else {
@@ -88,11 +97,7 @@ obj lfqueue<obj>::pop () {
 
 template <typename obj>
 lfqueue<obj>::~lfqueue () {
-    Node* current = head.ptr.load(std::memory_order_acquire);
-
-    while (current) {
-
-    }
+    
 }
 
 
