@@ -1,0 +1,6 @@
+Implement hazard pointers or another scheme to detect when it is safe for a thread to delete a node
+
+Write a real benchmark with heavy testing for behavior (run wihout compiler optimizations)
+
+Optimize memory, throughput, latency, and repeat tests
+    Decrease atomic operations or prevent busy waiting in high contention
