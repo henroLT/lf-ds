@@ -10,7 +10,7 @@ class lfqueue {
 
 
     struct Node {
-        const obj val;
+        obj val;
         std::atomic<Node*> next;
 
         Node()                      : val(obj{}), next(nullptr) {}
