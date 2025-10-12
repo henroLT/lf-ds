@@ -7,11 +7,13 @@
 
 template <typename obj>
 lfqueue<obj>::lfqueue () {
+    static_assert(std::atomic<PointerWrapper>::is_always_lock_free, 
+              "This lock-free queue requires lock-free 128-bit atomics for alignment");
+
     Node* dummy = new Node (obj{});
-    head.ptr.store (dummy, std::memory_order_relaxed);
-    head.count.store (0, std::memory_order_relaxed);
-    tail.ptr.store (dummy, std::memory_order_relaxed);
-    tail.count.store (0, std::memory_order_relaxed);
+    head.store ({dummy, 0}, std::memory_order_relaxed);
+    tail.store ({dummy, 0}, std::memory_order_relaxed);
+    node_pool.store (nullptr, std::memory_order_relaxed);
 }
 
 template <typename obj>
@@ -19,36 +21,27 @@ void lfqueue<obj>::push (const obj &elem) {
     Node* newNode = get_from_pool (elem);
 
     while (true) {
-        Node* last = tail.ptr.load (std::memory_order_acquire);
-        uint64_t last_count = tail.count.load (std::memory_order_acquire);
-        Node* next = last->next.load (std::memory_order_acquire);
-
-        if (last != tail.ptr.load (std::memory_order_acquire) || 
-            last_count != tail.count.load (std::memory_order_acquire)) 
-                continue;
+        PointerWrapper last = tail.load (std::memory_order_acquire);
+        Node* next = last.node_ptr->next.load (std::memory_order_acquire);
 
         if (next == nullptr) {
-            if (last->next.compare_exchange_weak (next, newNode,
+            if (last.node_ptr->next.compare_exchange_weak (next, newNode,
                 std::memory_order_release,
                 std::memory_order_relaxed)) {
 
-                if (tail.ptr.compare_exchange_strong (last, newNode,
+                tail.compare_exchange_strong (last, {newNode, last.cnt + 1},
                     std::memory_order_release,
-                    std::memory_order_relaxed)) {
-
-                    tail.count.fetch_add (1, std::memory_order_relaxed);
-                }
+                    std::memory_order_relaxed
+                );
 
                 return;
             }
         }
         else {
-            if (tail.ptr.compare_exchange_weak (last, next,
+            tail.compare_exchange_weak (last, {next, last.cnt + 1},
                 std::memory_order_release,
-                std::memory_order_relaxed)) {
-
-                tail.count.fetch_add (1, std::memory_order_relaxed);
-            }
+                std::memory_order_relaxed
+            );
         }
     }
 }
@@ -56,25 +49,18 @@ void lfqueue<obj>::push (const obj &elem) {
 template <typename obj>
 obj lfqueue<obj>::pop () {
     while (true) {
-        Node* first = head.ptr.load (std::memory_order_acquire);
-        uint64_t first_count = head.count.load (std::memory_order_acquire);
-        Node* next = first->next.load (std::memory_order_acquire);
-        Node* last = tail.ptr.load (std::memory_order_acquire);
+        PointerWrapper first = head.load (std::memory_order_acquire);
+        PointerWrapper last = tail.load (std::memory_order_acquire);
+        Node* next = first.node_ptr->next.load (std::memory_order_acquire);
 
-        if (first != head.ptr.load (std::memory_order_acquire) || 
-            first_count != head.count.load (std::memory_order_acquire)) 
-                continue;
-
-        if (first == last) {
+        if (first.node_ptr == last.node_ptr) {
             if (next == nullptr)
                 throw std::runtime_error ("Queue is empty...");
 
-            if (tail.ptr.compare_exchange_strong (last, next,
+            tail.compare_exchange_strong (last, {next, last.cnt + 1},
                 std::memory_order_release,
-                std::memory_order_relaxed)) {
-                
-                tail.count.fetch_add (1, std::memory_order_relaxed);
-            }
+                std::memory_order_relaxed
+            );
         }
 
         else {
@@ -83,12 +69,11 @@ obj lfqueue<obj>::pop () {
 
             obj value = next->val;
 
-            if (head.ptr.compare_exchange_weak (first, next,
+            if (head.compare_exchange_weak (first, {next, first.cnt + 1},
                 std::memory_order_release,
                 std::memory_order_relaxed)) {
                 
-                head.count.fetch_add (1, std::memory_order_relaxed);
-                return_to_pool (first);
+                return_to_pool (first.node_ptr);
                 return value;
             }
         }
@@ -105,7 +90,7 @@ template <typename obj>
 typename lfqueue<obj>::Node* lfqueue<obj>::get_from_pool (const obj& v) {
     Node* node = node_pool.load (std::memory_order_acquire);
     while (node) {
-        Node* next = node->next.load (std::memory_order_relaxed);
+        Node* next = node->next.load (std::memory_order_acquire);
 
         if (node_pool.compare_exchange_weak (node, next,
             std::memory_order_release,

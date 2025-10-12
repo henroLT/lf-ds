@@ -20,18 +20,14 @@ class lfqueue {
     };
 
     struct PointerWrapper {
-        std::atomic<Node*> ptr;
-        std::atomic<uint64_t> count;
-        
-        enum { PAD = (64 > sizeof(std::atomic<Node*>) + sizeof(std::atomic<uint64_t>) ? 
-                64 - sizeof(std::atomic<Node*>) - sizeof(std::atomic<uint64_t>) : 1) };
-        char padding[PAD];
+        Node* node_ptr;
+        uint64_t cnt;
     };
 
 
     private:
-        PointerWrapper head;
-        PointerWrapper tail;
+        alignas(128) std::atomic<PointerWrapper> head;
+        alignas(128) std::atomic<PointerWrapper> tail;
         std::atomic<Node*> node_pool;
 
         Node* get_from_pool(const obj& val);
