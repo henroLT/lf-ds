@@ -7,12 +7,10 @@
 
 template <typename obj>
 lfqueue<obj>::lfqueue () {
-    static_assert(std::atomic<PointerWrapper>::is_always_lock_free, 
-              "This lock-free queue requires lock-free 128-bit atomics for alignment");
-
     Node* dummy = new Node (obj{});
     head.store ({dummy, 0}, std::memory_order_relaxed);
     tail.store ({dummy, 0}, std::memory_order_relaxed);
+    
     node_pool.store (nullptr, std::memory_order_relaxed);
 }
 

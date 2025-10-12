@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AtomicPointerWrapper"
 #include <atomic>
 #include <stdexcept>
 #include <cstddef>

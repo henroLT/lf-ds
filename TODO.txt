@@ -4,3 +4,8 @@ Write a real benchmark with heavy testing for behavior (run wihout compiler opti
 
 Optimize memory, throughput, latency, and repeat tests
     Decrease atomic operations or prevent busy waiting in high contention
+
+
+
+    compile:
+    clang++ src/queue/benchmark.cpp -std=c++20 -O2 -pthread -o test 
