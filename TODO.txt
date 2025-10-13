@@ -1,6 +1,4 @@
-Implement hazard pointers or another scheme to detect when it is safe for a thread to delete a node
-
-Write a real benchmark with heavy testing for behavior (run wihout compiler optimizations)
+Fix queue for true lock free, seems to be error in empty queue
 
 Optimize memory, throughput, latency, and repeat tests
     Decrease atomic operations or prevent busy waiting in high contention
@@ -8,4 +6,4 @@ Optimize memory, throughput, latency, and repeat tests
 
 
     compile:
-    clang++ src/queue/benchmark.cpp -std=c++20 -O2 -pthread -o test 
+    clang++ src/queue/benchmark.cpp -std=c++20 -O2 -pthread -latomic -o test
