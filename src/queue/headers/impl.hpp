@@ -123,14 +123,15 @@ lfqueue<obj>::~lfqueue() {
 template <typename obj>
 typename lfqueue<obj>::Node* lfqueue<obj>::get_from_pool(const obj& v) {
     Node* node = node_pool.load(std::memory_order_acquire);
+
     while (node) {
         PointerWrapper<Node> next_pw = node->next.load(std::memory_order_acquire);
         Node* next = next_pw.node_ptr;
 
         if (node_pool.compare_exchange_weak(
             node, next,
-            std::memory_order_release,
-            std::memory_order_relaxed)) {
+            std::memory_order_acquire,
+            std::memory_order_acquire)) {
 
             new (&node->val) obj(v);
             node->next.store(PointerWrapper<Node>(nullptr, 0), std::memory_order_relaxed);
