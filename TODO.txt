@@ -1,8 +1,8 @@
-Fix queue for true lock free, seems to be error in empty queue
-
+optimze queue
 Optimize memory, throughput, latency, and repeat tests
     Decrease atomic operations or prevent busy waiting in high contention
 
+work on map
 
 
     compile:

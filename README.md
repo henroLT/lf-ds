@@ -2,7 +2,7 @@
 Lock Free Data Structures for concurrency
    
 ### Currently Implemented ###
+queue - optimzations possible (future)
 
 ### In work ###
-queue
-list
+hashmap
