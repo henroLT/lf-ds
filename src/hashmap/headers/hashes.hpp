@@ -15,8 +15,8 @@ namespace hashes {
             return (static_cast<uint128_t> (hi) << 64) | (static_cast<uint128_t> (lo));
         }
 
-        static inline uint64_t u128_hi (uint128_t v) noexcept { return (uint64_t); }
-        static inline uint64_t u128_hi (uint128_t v) noexcept { return (uint64_t) (v >> 64); }
+        static inline constexpr uint64_t u128_lo (uint128_t v) noexcept { return static_cast<uint64_t> (v); }
+        static inline constexpr uint64_t u128_hi (uint128_t v) noexcept { return static_cast<uint64_t> (v >> 64); }
     #else
         struct uint128_t {
             uint64_t hi;
@@ -35,8 +35,8 @@ namespace hashes {
             return !(a == b);
         }
 
-        static inline uint64_t u128_hi (uint128_t v) noexcept { return v.hi; }
-        static inline uint64_t u128_hi (uint128_t v) noexcept { return v.lo; }
+        static inline constexpr uint64_t u128_hi (uint128_t v) noexcept { return v.hi; }
+        static inline constexpr uint64_t u128_lo (uint128_t v) noexcept { return v.lo; }
     #endif
 
 
@@ -76,24 +76,23 @@ namespace hashes {
     template <class T>
     static inline uint64_t h64 (const T& input) noexcept (noexcept (h128 (input))){
         const uint128_t h = h128 (input);
-        return detail::splitmix64 (u128_lo(h) ^ u128_hi(h));
+        return detail::splitmix64 (u128_lo(h) ^ detail::splitmix64 (u128_hi(h)));
     }
 
     template <class T>
     static inline uint32_t h32 (const T& input) noexcept (noexcept (h64 (input))) {
-        return (uint32_t) detail::fold64 (h64 (input));
+        return  static_cast<uint32_t> (detail::fold64 (h64 (input)));
     }
 
     template <class T>
     static inline uint16_t h16 (const T& input) noexcept (noexcept (h32 (input))) {
         uint32_t x = h32 (input);
-        return (uint16_t) (x ^ (x >> 16));
+        return static_cast<uint16_t> ((x ^ (x >> 16)));
     }
 
     template <class T>
     static inline uint8_t h8 (const T& input) noexcept (noexcept (h16 (input))) {
-        uint16_t h16 (input);
-        return (uint8_t) (x ^ (x >> 8));
+        uint16_t x = h16 (input);
+        return static_cast<uint8_t> ((x ^ (x >> 8)));
     }
-
 }
